@@ -846,7 +846,7 @@ sub albumsQuery {
 					my $trackPosition=1;
 					my $previousGroup;
 					my $previousGroupedTrackPosition;
-					foreach ( sort keys %$groupStructure ) {
+					foreach ( sort { $a <=> $b } keys %$groupStructure ) {
 						my $thisTrackGroupInfo = $groupStructure->{$_} || [];
 
 						if ( my $thisTrackGroup = join(@$thisTrackGroupInfo, '') ) {
