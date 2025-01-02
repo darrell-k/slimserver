@@ -386,6 +386,11 @@ sub postConnect {
 	foreach (keys %postConnectHandlers) {
 		$_->postDBConnect($dbh);
 	}
+
+	# custom function to get structured data for albums with works, performances etc. (see Slim::Control::Queries::albumsQuery)
+	$dbh->sqlite_create_function( 'ALBUM_GROUPING_INFO', 4, sub {
+		return sprintf('"%s":%s', shift, to_json(\@_));
+	} );
 }
 
 =head2

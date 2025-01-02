@@ -640,7 +640,8 @@ sub albumsQuery {
 		my $col = '(SELECT COUNT(1) FROM (SELECT 1 FROM tracks WHERE tracks.album=albums.id GROUP BY work,grouping,performance))';
 		$c->{$col} = 1;
 		$as->{$col} = 'group_count';
-		$col = "(SELECT GROUP_CONCAT(SUBSTR('00000'||tracknum,-5) || '->' || COALESCE(work,'') || '##' || COALESCE(performance,'') || '##' || COALESCE(grouping,''),',,') FROM tracks WHERE tracks.album = albums.id)";
+		# creating JSON ourselves, lack of JSON support in most of our DBI::SQLite binaries
+		$col = "(SELECT '{' || GROUP_CONCAT(ALBUM_GROUPING_INFO(tracknum, work, performance, grouping), ',') || '}' FROM tracks WHERE tracks.album = albums.id)";
 		$c->{$col} = 1;
 		$as->{$col} = 'group_structure';
 	}
@@ -841,24 +842,23 @@ sub albumsQuery {
 
 			if ( $tags =~ /2/ ) {
 				my $nonContiguous;
-				if ( $c->{'group_count'} > 1 ) {
+				if ( $c->{'group_count'} > 1 && (my $groupStructure = eval { from_json($c->{'group_structure'}) }) ) {
 					my $trackPosition=1;
-					my @groupStructure = sort split(',,',$c->{'group_structure'});
 					my $previousGroup;
 					my $previousGroupedTrackPosition;
-					foreach ( @groupStructure ) {
-						my $thisTrackGroup = (split('->',$_))[1];
-						$thisTrackGroup =~ s/^####$//;
-						if ( $thisTrackGroup ) {
+					foreach ( sort keys %$groupStructure ) {
+						my $thisTrackGroupInfo = $groupStructure->{$_} || [];
+
+						if ( my $thisTrackGroup = join(@$thisTrackGroupInfo, '') ) {
 							if ( $previousGroup ne $thisTrackGroup ) {
 								$previousGroup = $thisTrackGroup;
-							} else {
-								$nonContiguous ||= $previousGroupedTrackPosition && $previousGroupedTrackPosition+1 != $trackPosition;
+							}
+							elsif ( $previousGroupedTrackPosition && ($nonContiguous = $previousGroupedTrackPosition+1 != $trackPosition) ) {
+								last;
 							}
 							$previousGroupedTrackPosition = $trackPosition;
 						}
 						$trackPosition++;
-						last if $nonContiguous;
 					}
 				}
 				$request->addResultLoopIfValueDefined($loopname, $chunkCount, 'group_count', $c->{'group_count'});
