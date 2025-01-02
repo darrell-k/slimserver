@@ -849,7 +849,7 @@ sub albumsQuery {
 					foreach ( sort { $a <=> $b } keys %$groupStructure ) {
 						my $thisTrackGroupInfo = $groupStructure->{$_} || [];
 
-						if ( my $thisTrackGroup = join(@$thisTrackGroupInfo, '') ) {
+						if ( my $thisTrackGroup = join('', @$thisTrackGroupInfo) ) {
 							if ( $previousGroup ne $thisTrackGroup ) {
 								$previousGroup = $thisTrackGroup;
 							}
