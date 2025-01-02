@@ -640,8 +640,7 @@ sub albumsQuery {
 		my $col = '(SELECT COUNT(1) FROM (SELECT 1 FROM tracks WHERE tracks.album=albums.id GROUP BY work,grouping,performance))';
 		$c->{$col} = 1;
 		$as->{$col} = 'group_count';
-		# creating JSON ourselves, lack of JSON support in most of our DBI::SQLite binaries
-		$col = "(SELECT '{' || GROUP_CONCAT(ALBUM_GROUPING_INFO(tracknum, work, performance, grouping), ',') || '}' FROM tracks WHERE tracks.album = albums.id)";
+		$col = "(SELECT GROUP_CONCAT(SUBSTR('00000'||tracknum,-5) || COALESCE(work,'') || '##' || COALESCE(performance,'') || '##' || COALESCE(grouping,''),',,') FROM tracks WHERE tracks.album = albums.id)";
 		$c->{$col} = 1;
 		$as->{$col} = 'group_structure';
 	}
@@ -842,18 +841,17 @@ sub albumsQuery {
 
 			if ( $tags =~ /2/ ) {
 				my $nonContiguous;
-				if ( $c->{'group_count'} > 1 && (my $groupStructure = eval { from_json($c->{'group_structure'}) }) ) {
+				if ( $c->{'group_count'} > 1 ) {
 					my $trackPosition=1;
-					my $previousGroup = '';
+					my $previousGroup;
 					my $previousGroupedTrackPosition;
-					foreach ( sort { $a <=> $b } keys %$groupStructure ) {
-						my $thisTrackGroupInfo = $groupStructure->{$_} || [];
-
-						if ( my $thisTrackGroup = join('', @$thisTrackGroupInfo) ) {
+					foreach ( sort split(',,', $c->{'group_structure'}) ) {
+						my $thisTrackGroup = substr($_, 5);
+						if ( $thisTrackGroup ne '####' ) {
 							if ( $previousGroup ne $thisTrackGroup ) {
 								$previousGroup = $thisTrackGroup;
 							}
-							elsif ( $previousGroupedTrackPosition && ($nonContiguous = $previousGroupedTrackPosition+1 != $trackPosition) ) {
+							elsif ( $previousGroupedTrackPosition && ($nonContiguous = ($previousGroupedTrackPosition+1 != $trackPosition)) ) {
 								last;
 							}
 							$previousGroupedTrackPosition = $trackPosition;
