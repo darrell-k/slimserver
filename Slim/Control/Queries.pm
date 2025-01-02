@@ -844,7 +844,7 @@ sub albumsQuery {
 				my $nonContiguous;
 				if ( $c->{'group_count'} > 1 && (my $groupStructure = eval { from_json($c->{'group_structure'}) }) ) {
 					my $trackPosition=1;
-					my $previousGroup;
+					my $previousGroup = '';
 					my $previousGroupedTrackPosition;
 					foreach ( sort { $a <=> $b } keys %$groupStructure ) {
 						my $thisTrackGroupInfo = $groupStructure->{$_} || [];
