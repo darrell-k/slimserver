@@ -21,6 +21,7 @@ sub _updateMetaData {
 	my $entry    = shift;
 	my $metadata = shift;
 	my $playlistUrl = shift;
+	my $addedFromWork = shift;
 
 	my $attributes = {};
 
@@ -48,6 +49,7 @@ sub _updateMetaData {
 
 	if ( !scalar keys %{$attributes} ) {
 		$track = Slim::Schema->objectForUrl($entry);
+		$track->added_from_work($addedFromWork);
 	}
 
 	if ( !defined $track ) {
@@ -89,14 +91,11 @@ sub _filehandleFromNameOrString {
 		};
 
 		# Always write out in UTF-8 with a BOM.
-		if ($] > 5.007) {
+		binmode($output, ":raw");
 
-			binmode($output, ":raw");
+		print $output $File::BOM::enc2bom{'utf8'};
 
-			print $output $File::BOM::enc2bom{'utf8'};
-
-			binmode($output, ":encoding(utf8)");
-		}
+		binmode($output, ":encoding(utf8)");
 
 	} else {
 
