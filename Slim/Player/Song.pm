@@ -107,8 +107,15 @@ sub new {
 
 	$url = $track->url;
 
-	main::INFOLOG && $log->info("index $index -> $url");
+	# If we have a Track object which is a remote track, fetch/create the equivalent RemoteTrack: required for correct playback.
+	if (ref $track eq "Slim::Schema::Track" && $track->remote) {
+		$track = Slim::Schema::RemoteTrack->fetch($url);
+		if (!$track) {
+			$track = Slim::Schema::RemoteTrack->new($url);
+		}
+	}
 
+	main::INFOLOG && $log->info("index $index -> $url");
 	my $handler = Slim::Player::ProtocolHandlers->handlerForURL( $url );
 	if (!$handler) {
 		logError("Could not find handler for $url!");
