@@ -111,6 +111,7 @@ sub new {
 	if (ref $track eq "Slim::Schema::Track" && $track->remote) {
 		$track = Slim::Schema::RemoteTrack->fetch($url);
 		if (!$track) {
+			# RemoteTrack not in the cache
 			$track = Slim::Schema::RemoteTrack->new($url);
 		}
 	}
