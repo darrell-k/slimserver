@@ -89,7 +89,8 @@ sub new {
 
  	my $track    = Slim::Schema->objectForUrl({
 		'url'      => $url,
-		'readTags' => 1
+		'readTags' => 1,
+		'matchUrl' => 1,
 	});
 
 	if (!blessed($track) || !$track->can('url')) {
@@ -106,15 +107,6 @@ sub new {
 	}
 
 	$url = $track->url;
-
-	# If we have a Track object which is a remote track, fetch/create the equivalent RemoteTrack: required for correct playback.
-	if (ref $track eq "Slim::Schema::Track" && $track->remote) {
-		$track = Slim::Schema::RemoteTrack->fetch($url);
-		if (!$track) {
-			# RemoteTrack not in the cache
-			$track = Slim::Schema::RemoteTrack->new($url);
-		}
-	}
 
 	main::INFOLOG && $log->info("index $index -> $url");
 	my $handler = Slim::Player::ProtocolHandlers->handlerForURL( $url );

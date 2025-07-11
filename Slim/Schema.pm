@@ -775,6 +775,7 @@ sub objectForUrl {
 	my $playlist   = 0;
 	my $checkMTime = 1;
 	my $playlistId;
+	my $matchUrl;
 
 	if (@_) {
 
@@ -791,6 +792,7 @@ sub objectForUrl {
 		$playlist   = $args->{'playlist'};
 		$checkMTime = $args->{'checkMTime'} if defined $args->{'checkMTime'};
 		$playlistId = $args->{'playlistId'};
+		$matchUrl   = $args->{'matchUrl'};
 	}
 
 	if (ref($url) eq 'Slim::Schema::RemoteTrack' && $url->url) {
@@ -822,7 +824,7 @@ sub objectForUrl {
 
 	# Check to see if we have a remote track stored in our database
 	my $isRemote = Slim::Music::Info::isRemoteURL($url);
-	if ( $isRemote ) {
+	if ( $isRemote && !$matchUrl) {
 		$track = $self->_retrieveTrack($url, $playlist, 'integrateRemote');
 	}
 
@@ -2445,7 +2447,7 @@ sub _retrieveTrack {
 	my $track;
 
 	if (!$integrateRemote && Slim::Music::Info::isRemoteURL($url)) {
-		return Slim::Schema::RemoteTrack->fetch($url, $playlist);
+		return Slim::Schema::RemoteTrack->fetch($url, $playlist) || Slim::Schema::RemoteTrack->new($url);
 	}
 
 	# Keep the last track per dirname.
