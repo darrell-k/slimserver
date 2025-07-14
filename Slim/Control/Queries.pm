@@ -4661,7 +4661,8 @@ sub titlesQuery {
 	my $workID        = $request->getParam('work_id');
 	my $ignoreWorkTracks = $request->getParam('ignore_work_tracks');
 	my $performance      = $request->getParam('performance');
-	my $onlyAlbumYears = $request->getParam('only_album_years');
+	my $onlyAlbumYears   = $request->getParam('only_album_years');
+	my $rmtAlbumId       = $request->getParam('remote_album_id');
 
 	# did we have override on the defaults?
 	# note that this is not equivalent to
@@ -4669,6 +4670,23 @@ sub titlesQuery {
 	# since when $default eq '' -> $val eq $param
 	$tags = $tagsprm if defined $tagsprm;
 
+if ($rmtAlbumId) {
+	my $handler = Slim::Player::ProtocolHandlers->handlerForURL($rmtAlbumId);
+	if ( $handler && $handler->can('getTrackUrls') ) {
+		$rmtAlbumId =~ s/^.*:\/\///;
+		my @urls = $handler->getTrackUrls($request->client(), $rmtAlbumId);
+		my $count = 0;
+		foreach my $rmtTrackUrl (@urls) {
+			my $remoteTrack = Slim::Schema::RemoteTrack->new($rmtTrackUrl);
+			my $item = _songData($request, $remoteTrack, $tags);
+			$request->setResultLoopHash('titles_loop', $count, $item);
+			$count++;
+		}
+		$request->addResult('count', scalar(@urls));
+	}
+	$request->setStatusDone();
+	return;
+}
 	my $collate  = Slim::Utils::OSDetect->getOS()->sqlHelperClass()->collate();
 	my $where    = '(tracks.audio = 1 AND tracks.content_type NOT IN ("cpl", "src", "ssp", "dir") ';
 	$where .= $ignoreWorkTracks ? 'AND tracks.work IS NULL)' : ')';

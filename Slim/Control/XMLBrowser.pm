@@ -50,7 +50,7 @@ my %colMap = (
 	G => 'genres',
 	i => 'discnum',
 	k => 'description',
-	l => ['album','version'],
+	l => ['album','version','album_id','remote_album_id'],
 	q => 'disccount',
 	t => ['tracknum','title','titleFlags'],
 	# "date" is being used in Podcast episodes
