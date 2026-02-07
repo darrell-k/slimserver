@@ -59,7 +59,6 @@ use constant SCAN_WORKS_FOR_MY_CLASSICAL_GENRES => 2;
 my $log = logger('database.info');
 
 my $prefs = preferences('server');
-my $scanWorks = $prefs->get('worksScan') if main::SCANNER;
 
 # Singleton objects for Unknowns
 our ($_unknownArtist, $_unknownGenre, $_unknownAlbumId) = ('', '', undef);
@@ -2007,12 +2006,23 @@ sub updateOrCreateBase {
 		# Update timestamp
 		$attributeHash->{updated_time} = time();
 
+		my $nullableColumns = {
+			performance => 1,
+			grouping => 1,
+			discsubtitle => 1,
+			musicbrainz_id => 1,
+		};
+		# Some taggers will not supply blank tags so create the attributes for columns which need to be nulled.
+		foreach my $col (keys %$nullableColumns) {
+			$attributeHash->{uc($col)} = undef if !exists $attributeHash->{uc($col)};
+		}
+
 		while (my ($key, $val) = each %$attributeHash) {
 
 			$key = lc($key);
 
-			## Need to set performance/grouping/discsubtitle to null if no value passed in (may have had a value before this scan)
-			if ( (defined $val && $val ne '' || $key eq "performance" || $key eq "grouping" || $key eq "discsubtitle") && exists $trackAttrs->{$key} ) {
+			# Some columns should be set to null if no value passed in (may have had a value before this scan)
+			if ( (defined $val && $val ne '' || $nullableColumns->{$key}) && exists $trackAttrs->{$key} ) {
 
 				# Bug 7731, filter out duplicate keys that end up as array refs
 				# https://github.com/LMS-Community/slimserver/issues/1378
@@ -2024,13 +2034,14 @@ sub updateOrCreateBase {
 			}
 
 			# Metadata is only included if it contains a non zero value
-			if ( main::STATISTICS && $val && blessed($trackPersistent) && exists $trackPersistentAttrs->{$key} ) {
+			if ( main::STATISTICS && ($val || $nullableColumns->{$key}) && blessed($trackPersistent) && exists $trackPersistentAttrs->{$key} ) {
 
 				main::INFOLOG && $log->is_info && $log->info("Updating persistent $url : $key to $val");
 
 				$trackPersistent->set_column( $key => $val );
 			}
 		}
+		$trackPersistent->update() if blessed($trackPersistent);
 
 		# _postCheckAttributes does an update
 		if (!$playlist) {
@@ -2824,13 +2835,15 @@ sub _preCheckAttributes {
 	# since the tag may need to be split.  See bugs #295 and #4584.
 	#
 	# Push these back until we have a Track object.
-	for my $tag (Slim::Schema::Contributor->contributorRoles, (map { $_ . 'SORT' } Slim::Schema::Contributor->contributorRoles()),
+	for my $tag (Slim::Schema::Contributor->contributorRoles,
+		(map { $_ . 'SORT' } Slim::Schema::Contributor->contributorRoles()),
+		(map { $_ . '_EXTID' } Slim::Schema::Contributor->contributorRoles()),
 		qw(
 			COMMENT GENRE PIC APIC ALBUM ALBUMSORT DISCC
 			COMPILATION REPLAYGAIN_ALBUM_PEAK REPLAYGAIN_ALBUM_GAIN
 			MUSICBRAINZ_ARTIST_ID MUSICBRAINZ_ALBUMARTIST_ID MUSICBRAINZ_ALBUM_ID
 			MUSICBRAINZ_ALBUM_TYPE MUSICBRAINZ_ALBUM_STATUS RELEASETYPE
-			ALBUM_EXTID ARTIST_EXTID WORK WORKSORT
+			ALBUM_EXTID WORK WORKSORT
 		))
 	{
 
@@ -3114,6 +3127,7 @@ sub _mergeAndCreateContributors {
 			# Bug: 6507 - use any ARTISTSORT tag for this contributor
 			$attributes->{'TRACKARTISTSORT'} = delete $attributes->{'ARTISTSORT'};
 			$attributes->{'MUSICBRAINZ_TRACKARTIST_ID'} = delete $attributes->{'MUSICBRAINZ_ARTIST_ID'} if $attributes->{'MUSICBRAINZ_ARTIST_ID'};
+			$attributes->{'TRACKARTIST_EXTID'} = delete $attributes->{'ARTIST_EXTID'};
 
 			main::DEBUGLOG && $isDebug && $log->debug(sprintf("-- Contributor '%s' of role 'ARTIST' transformed to role 'TRACKARTIST'",
 				$attributes->{'TRACKARTIST'},
@@ -3138,8 +3152,7 @@ sub _mergeAndCreateContributors {
 			'artist'   => $contributor,
 			'brainzID' => $attributes->{"MUSICBRAINZ_${tag}_ID"},
 			'sortBy'   => $attributes->{$tag.'SORT'},
-			# only store EXTID for track artist, as we don't have it for other roles
-			'extid'    => $tag eq 'ARTIST' && $attributes->{'ARTIST_EXTID'},
+			'extid'    => $attributes->{"${tag}_EXTID"},
 		});
 
 		main::DEBUGLOG && $isDebug && $log->is_debug && $log->debug(sprintf("-- Track has contributor '$contributor' of role '$tag'"));
@@ -3360,11 +3373,10 @@ sub canFulltextSearch {
 
 sub _workRequired {
 	my $genres = shift;
-	my $wantWorks = defined $scanWorks ? $scanWorks : $prefs->get('worksScan');
 
-	return $wantWorks == SCAN_WORKS_FOR_MY_CLASSICAL_GENRES
+	return $prefs->get('worksScan') == SCAN_WORKS_FOR_MY_CLASSICAL_GENRES
 		? Slim::Schema::Genre->isMyClassicalGenre($genres)
-		: $scanWorks;
+		: SCAN_WORKS_FOR_MY_CLASSICAL_GENRES;
 }
 
 =head1 SEE ALSO
