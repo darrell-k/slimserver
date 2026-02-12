@@ -380,8 +380,6 @@ sub parseSearchTerm {
 			# this is ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~.
 			# https://www.gnu.org/software/grep/manual/html_node/Character-Classes-and-Bracket-Expressions.html
 			$quoted =~ s/[!"#\$%&'()*+,\-.\/:;<=>?@\[\\\]^_`{|}~]/ /g;
-		} else {
-			$quoted =~ s/[[:punct:]]/ /g;
 		}
 
 		push @quoted, '"' . $quoted . '"';
@@ -575,7 +573,11 @@ sub _uniqueTokens {
 		$text = Slim::Utils::Text::ignoreCaseArticles($text, 0, 1);
 	}
 
-	return join(' ', Slim::Utils::Misc::uniq(split(/\s/, $text)));
+	utf8::decode($text);
+
+	my @punct = split(/\s/, $text);
+	my @noPunct = grep /\w+/, split(/[\s[:punct:]]/, $text);
+	return join(' ', Slim::Utils::Misc::uniq(@punct, @noPunct));
 }
 
 sub _rebuildIndex {
