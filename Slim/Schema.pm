@@ -1708,27 +1708,11 @@ sub _newTrack {
 		$LAST_ERROR = 'Track is DRM-protected';
 		return;
 	}
-	my $albumDisplayArtist;
-	if ( $attributeHash->{ALBUMARTIST} ) {
-		$albumDisplayArtist = ref $attributeHash->{ALBUMARTIST} eq 'ARRAY'
-			? $attributeHash->{ALBUMARTIST}->[0]
-			: $attributeHash->{ALBUMARTIST};
-	} elsif ( $attributeHash->{ALBUMARTISTS} ) {
-		$albumDisplayArtist = ref $attributeHash->{ALBUMARTISTS} eq 'ARRAY'
-			? join(', ', grep { defined $_ && $_ ne '' } @{$attributeHash->{ALBUMARTISTS}})
-			: $attributeHash->{ALBUMARTISTS};
-	}
+	my $albumDisplayArtist = _extractDisplayName(
+		$attributeHash->{ALBUMARTIST}, $attributeHash->{ALBUMARTISTS});
+	my $trackDisplayArtist = _extractDisplayName(
+		$attributeHash->{ARTIST}, $attributeHash->{ARTISTS});
 
-	my $trackDisplayArtist;
-	if ( $attributeHash->{ARTIST} ) {
-		$trackDisplayArtist = ref $attributeHash->{ARTIST} eq 'ARRAY'
-			? $attributeHash->{ARTIST}->[0]
-			: $attributeHash->{ARTIST};
-	} elsif ( $attributeHash->{ARTISTS} ) {
-		$trackDisplayArtist = ref $attributeHash->{ARTISTS} eq 'ARRAY'
-			? join(', ', grep { defined $_ && $_ ne '' } @{$attributeHash->{ARTISTS}})
-			: $attributeHash->{ARTISTS};
-	}
 	($attributeHash, $deferredAttributes) = $self->_preCheckAttributes({
 		'url'        => $url,
 		'attributes' => $attributeHash,
@@ -2024,27 +2008,10 @@ sub updateOrCreateBase {
 			$attributeHash = { %{Slim::Formats->readTags($url)}, %$attributeHash  };
 		}
 
-		my $albumDisplayArtist;
-		if ( $attributeHash->{ALBUMARTIST} ) {
-			$albumDisplayArtist = ref $attributeHash->{ALBUMARTIST} eq 'ARRAY'
-				? $attributeHash->{ALBUMARTIST}->[0]
-				: $attributeHash->{ALBUMARTIST};
-		} elsif ( $attributeHash->{ALBUMARTISTS} ) {
-			$albumDisplayArtist = ref $attributeHash->{ALBUMARTISTS} eq 'ARRAY'
-				? join(', ', grep { defined $_ && $_ ne '' } @{$attributeHash->{ALBUMARTISTS}})
-				: $attributeHash->{ALBUMARTISTS};
-		}
-
-		my $trackDisplayArtist;
-		if ( $attributeHash->{ARTIST} ) {
-			$trackDisplayArtist = ref $attributeHash->{ARTIST} eq 'ARRAY'
-				? $attributeHash->{ARTIST}->[0]
-				: $attributeHash->{ARTIST};
-		} elsif ( $attributeHash->{ARTISTS} ) {
-			$trackDisplayArtist = ref $attributeHash->{ARTISTS} eq 'ARRAY'
-				? join(', ', grep { defined $_ && $_ ne '' } @{$attributeHash->{ARTISTS}})
-				: $attributeHash->{ARTISTS};
-		}
+		my $albumDisplayArtist = _extractDisplayName(
+			$attributeHash->{ALBUMARTIST}, $attributeHash->{ALBUMARTISTS});
+		my $trackDisplayArtist = _extractDisplayName(
+			$attributeHash->{ARTIST}, $attributeHash->{ARTISTS});
 
 		my $deferredAttributes;
 		($attributeHash, $deferredAttributes) = $self->_preCheckAttributes({
@@ -3266,6 +3233,16 @@ sub _mergeAndCreateContributors {
 	}
 
 	return \%contributors;
+}
+
+sub _extractDisplayName {
+	my ($singular, $plural) = @_;
+
+	return undef unless defined $plural;
+	return undef unless defined $singular
+		&& (ref $singular eq 'ARRAY' ? scalar @$singular : $singular ne '');
+
+	return ref $singular eq 'ARRAY' ? $singular->[0] : $singular;
 }
 
 sub _getOrCreateDisplayContributor {
