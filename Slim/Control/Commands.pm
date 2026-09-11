@@ -2773,12 +2773,16 @@ sub rescanCommand {
 			$sth->execute(Slim::Utils::Misc::fileURLFromPath($_));
 		}
 
-		Slim::Utils::Scanner::Local->rescan(\@paths, {
-			no_async  => 1,
-			types     => 'audio',
-			recursive => 0,
-			trackList => \@trackList,
-		} ) if scalar @paths;
+		if (scalar @paths) {
+			Slim::Utils::Scanner::Local->rescan(\@paths, {
+				no_async  => 1,
+				types     => 'audio',
+				recursive => 0,
+				trackList => \@trackList,
+			} );
+			Slim::Music::VirtualLibraries->autoRebuild();
+		}
+
 	}
 	else {
 		# In-process scan

@@ -2557,6 +2557,7 @@ sub _checkValidity {
 			'commit'   => 1,
 		});
 
+		Slim::Music::VirtualLibraries->autoRebuild();
 		$track = Slim::Schema->rs('Track')->find($trackId) if (defined $trackId);
 	}
 
