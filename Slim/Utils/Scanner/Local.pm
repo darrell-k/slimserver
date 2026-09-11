@@ -136,6 +136,8 @@ sub rescan {
 		$paths = [ $paths ];
 	}
 
+	my $trackList = $args->{trackList} ? "OR tracks.id IN (" . join(',', @{$args->{trackList}}) . ")" : "";
+
 	# get rid of empty entries in our $paths list
 	$paths = [ grep { $_ } @$paths ];
 
@@ -278,6 +280,7 @@ sub rescan {
 						scanned_files.timestamp != tracks.timestamp
 						OR
 						scanned_files.filesize  != tracks.filesize
+						$trackList
 					)
 					AND tracks.content_type $ctFilter
 				)

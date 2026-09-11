@@ -2755,11 +2755,11 @@ sub rescanCommand {
 
 		my $dbh = Slim::Schema->dbh;
 		my $sth = $dbh->prepare_cached('DELETE FROM scanned_files WHERE url = ?');
+		my @trackList;
 		my @paths = Slim::Utils::Misc::uniq(
 			map {
-				# reset the track's timestamp so changes are certainly picked up
-				$_->timestamp(0);
-				$_->update;
+				# build list of tracks to rescan
+				push @trackList, $_->id;
 
 				# delete entry in scanned_files - otherwise rescan doesn't handle deletions for non-recursive scans
 				$sth->execute($_->url);
@@ -2777,6 +2777,7 @@ sub rescanCommand {
 			no_async  => 1,
 			types     => 'audio',
 			recursive => 0,
+			trackList => \@trackList,
 		} ) if scalar @paths;
 	}
 	else {
